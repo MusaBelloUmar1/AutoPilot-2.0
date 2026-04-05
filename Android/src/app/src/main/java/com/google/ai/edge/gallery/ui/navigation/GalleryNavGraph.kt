@@ -90,6 +90,7 @@ import com.google.ai.edge.gallery.ui.llmchat.LlmChatModelHelper
 import com.google.ai.edge.gallery.ui.common.chat.ModelDownloadStatusInfoPanel
 import com.google.ai.edge.gallery.ui.home.ConsoleScreen
 import com.google.ai.edge.gallery.ui.home.HomeScreen
+import com.google.ai.edge.gallery.ui.home.MainTabScreen
 import com.google.ai.edge.gallery.ui.home.OnboardingScreen
 import com.google.ai.edge.gallery.ui.home.PromoScreenGm4
 import com.google.ai.edge.gallery.ui.modelmanager.GlobalModelManager
@@ -238,7 +239,7 @@ fun GalleryNavHost(
         Orchestrator(scheduler)
       }
       // AutoPilot Console is the new home screen.
-      ConsoleScreen(orchestrator = orchestrator)
+      MainTabScreen(orchestrator = orchestrator)
     }
 
     // Model list.

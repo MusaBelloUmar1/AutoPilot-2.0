@@ -44,14 +44,35 @@ class AutoPilotAccessibilityService : AccessibilityService() {
   }
 
   fun performTap(x: Int, y: Int): Boolean {
-    // Basic click implementation using action.
     Log.d(TAG, "Tapping at ($x, $y)")
-    return true
+    val rootNode = rootInActiveWindow ?: return false
+    val node = findNodeAtPoint(rootNode, x, y) ?: return false
+    return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
   }
 
   fun performType(text: String, nodeId: String?): Boolean {
     Log.d(TAG, "Typing '$text' into $nodeId")
-    return true
+    val rootNode = rootInActiveWindow ?: return false
+    val nodes = rootNode.findAccessibilityNodeInfosByViewId(nodeId ?: "")
+    if (nodes.isEmpty()) return false
+    val node = nodes[0]
+    return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, android.os.Bundle().apply {
+      putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+    })
+  }
+
+  private fun findNodeAtPoint(node: AccessibilityNodeInfo, x: Int, y: Int): AccessibilityNodeInfo? {
+    val bounds = Rect()
+    node.getBoundsInScreen(bounds)
+    if (bounds.contains(x, y)) {
+      for (i in 0 until node.childCount) {
+        val child = node.getChild(i) ?: continue
+        val result = findNodeAtPoint(child, x, y)
+        if (result != null) return result
+      }
+      return node
+    }
+    return null
   }
 
   private fun traverseNodes(node: AccessibilityNodeInfo, elements: MutableList<ScreenElement>) {
