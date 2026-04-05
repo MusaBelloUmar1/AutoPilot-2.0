@@ -79,8 +79,18 @@ import com.google.ai.edge.gallery.firebaseAnalytics
 import com.google.ai.edge.gallery.ui.benchmark.BenchmarkScreen
 import com.google.ai.edge.gallery.ui.common.ErrorDialog
 import com.google.ai.edge.gallery.ui.common.ModelPageAppBar
+import androidx.compose.runtime.SideEffect
+import com.google.ai.edge.gallery.automation.AutoPilotAccessibilityService
+import com.google.ai.edge.gallery.automation.DefaultPerception
+import com.google.ai.edge.gallery.automation.DefaultTaskScheduler
+import com.google.ai.edge.gallery.automation.LiteRTAgentBrain
+import com.google.ai.edge.gallery.automation.Orchestrator
+import com.google.ai.edge.gallery.runtime.LlmModelHelper
+import com.google.ai.edge.gallery.ui.llmchat.LlmChatModelHelper
 import com.google.ai.edge.gallery.ui.common.chat.ModelDownloadStatusInfoPanel
+import com.google.ai.edge.gallery.ui.home.ConsoleScreen
 import com.google.ai.edge.gallery.ui.home.HomeScreen
+import com.google.ai.edge.gallery.ui.home.OnboardingScreen
 import com.google.ai.edge.gallery.ui.home.PromoScreenGm4
 import com.google.ai.edge.gallery.ui.modelmanager.GlobalModelManager
 import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatusType
@@ -92,6 +102,7 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "AGGalleryNavGraph"
 private const val ROUTE_HOMESCREEN = "homepage"
+private const val ROUTE_ONBOARDING = "onboarding"
 private const val ROUTE_MODEL_LIST = "model_list"
 private const val ROUTE_MODEL = "route_model"
 private const val ROUTE_BENCHMARK = "benchmark"
@@ -180,72 +191,54 @@ fun GalleryNavHost(
     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
 
+  var startDestination by remember { mutableStateOf<String?>(null) }
+  val scope = rememberCoroutineScope()
+
+  LaunchedEffect(Unit) {
+    startDestination =
+      if (modelManagerViewModel.dataStoreRepository.hasCompletedOnboarding()) {
+        ROUTE_HOMESCREEN
+      } else {
+        ROUTE_ONBOARDING
+      }
+  }
+
+  if (startDestination == null) {
+    return
+  }
+
   NavHost(
     navController = navController,
-    startDestination = ROUTE_HOMESCREEN,
+    startDestination = startDestination!!,
     enterTransition = { EnterTransition.None },
     exitTransition = { ExitTransition.None },
   ) {
-    // Home screen.
-    composable(route = ROUTE_HOMESCREEN) {
-      // Create a state to trigger PromoScreen fade in animation.
-      val promoId = "gm4"
-      Box(modifier = modifier.fillMaxSize()) {
-        var promoDismissed by remember { mutableStateOf(false) }
-
-        val homeScreenContent: @Composable () -> Unit = {
-          HomeScreen(
-            modelManagerViewModel = modelManagerViewModel,
-            tosViewModel = hiltViewModel(),
-            enableAnimation = enableHomeScreenAnimation,
-            navigateToTaskScreen = { task ->
-              pickedTask = task
-              enableModelListAnimation = true
-              navController.navigate(ROUTE_MODEL_LIST)
-              firebaseAnalytics?.logEvent(
-                GalleryEvent.CAPABILITY_SELECT.id,
-                Bundle().apply { putString("capability_name", task.id) },
-              )
-            },
-            onModelsClicked = { navController.navigate(ROUTE_MODEL_MANAGER) },
-            gm4 = true,
-          )
-        }
-
-        // Show home page directly if promo has been viewed.
-        if (modelManagerViewModel.dataStoreRepository.hasViewedPromo(promoId = promoId)) {
-          homeScreenContent()
-        }
-        // If the promo has not been viewed, show promo screen first.
-        else {
-          AnimatedContent(
-            targetState = promoDismissed,
-            label = "PromoToHome",
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-          ) { dismissed ->
-            if (dismissed) {
-              homeScreenContent()
-            } else {
-              var startAnimation by remember { mutableStateOf(false) }
-              LaunchedEffect(Unit) {
-                delay(0L)
-                startAnimation = true
-              }
-              AnimatedVisibility(
-                visible = startAnimation,
-                enter = scaleIn(initialScale = 1.05f, animationSpec = tween(durationMillis = 1000)),
-              ) {
-                PromoScreenGm4(
-                  onDismiss = {
-                    modelManagerViewModel.dataStoreRepository.addViewedPromoId(promoId = promoId)
-                    promoDismissed = true
-                  }
-                )
-              }
+    // Onboarding screen.
+    composable(route = ROUTE_ONBOARDING) {
+      OnboardingScreen(
+        onComplete = {
+          scope.launch {
+            modelManagerViewModel.dataStoreRepository.setOnboardingCompleted(true)
+            navController.navigate(ROUTE_HOMESCREEN) {
+              popUpTo(ROUTE_ONBOARDING) { inclusive = true }
             }
           }
         }
+      )
+    }
+
+    // Home screen.
+    composable(route = ROUTE_HOMESCREEN) {
+      val context = LocalContext.current
+      val orchestrator = remember {
+        val modelHelper = LlmChatModelHelper
+        val brain = LiteRTAgentBrain(modelHelper)
+        val perception = DefaultPerception(AutoPilotAccessibilityService.getInstance())
+        val scheduler = DefaultTaskScheduler(brain, perception)
+        Orchestrator(scheduler)
       }
+      // AutoPilot Console is the new home screen.
+      ConsoleScreen(orchestrator = orchestrator)
     }
 
     // Model list.

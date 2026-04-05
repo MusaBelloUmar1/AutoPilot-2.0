@@ -78,6 +78,7 @@ message Settings {
   // copybara:strip_end
 
   repeated string viewed_promo_id = 10;
+  bool has_completed_onboarding = 11;
 }
 
 message UserData {

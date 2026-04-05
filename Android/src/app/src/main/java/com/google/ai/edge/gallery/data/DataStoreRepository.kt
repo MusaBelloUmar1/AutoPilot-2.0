@@ -109,6 +109,12 @@ interface DataStoreRepository {
 
   /** Returns whether a promo with the specified ID has been viewed. */
   fun hasViewedPromo(promoId: String): Boolean
+
+  /** Returns whether the onboarding flow has been completed. */
+  suspend fun hasCompletedOnboarding(): Boolean
+
+  /** Records that the onboarding flow has been completed. */
+  suspend fun setOnboardingCompleted(completed: Boolean)
 }
 
 /** Repository for managing data using Proto DataStore. */
@@ -431,6 +437,17 @@ class DefaultDataStoreRepository(
     return runBlocking {
       val settings = dataStore.data.first()
       settings.viewedPromoIdList.contains(promoId)
+    }
+  }
+
+  override suspend fun hasCompletedOnboarding(): Boolean {
+    val settings = dataStore.data.first()
+    return settings.hasCompletedOnboarding
+  }
+
+  override suspend fun setOnboardingCompleted(completed: Boolean) {
+    dataStore.updateData { settings ->
+      settings.toBuilder().setHasCompletedOnboarding(completed).build()
     }
   }
 }
