@@ -22,7 +22,7 @@
   <string name="add_audio" translatable="false">+Audio</string>
   <string name="aichat_initializing_title" translatable="false">Initializing model</string>
   <string name="aichat_initializing_content" translatable="false">Sit tight, this can take up to 1 minute</string>
-  <string name="app_intro" translatable="false">Explore a world of amazing on-device models from</string>
+  <string name="app_intro" translatable="false">Your personal on-device automation agent.</string>
   <string name="app_name" translatable="false">AutoPilot</string>
   <string name="app_name_first_part" translatable="false">Auto</string>
   <string name="app_name_second_part" translatable="false">Pilot</string>
