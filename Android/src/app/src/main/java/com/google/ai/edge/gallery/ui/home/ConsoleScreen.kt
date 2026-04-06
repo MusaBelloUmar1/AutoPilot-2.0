@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -95,14 +97,14 @@ data class TabItem(val title: String, val icon: ImageVector)
 @Composable
 fun ConsoleScreen(orchestrator: Orchestrator? = null) {
   var input by remember { mutableStateOf("") }
-  val messages = remember { mutableStateListOf<String>() }
+  val logs by (orchestrator?.logs ?: MutableStateFlow(emptyList())).collectAsState()
 
   Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
     Text(text = "AutoPilot Console", style = MaterialTheme.typography.headlineMedium)
 
     LazyColumn(modifier = Modifier.weight(1f).padding(vertical = 16.dp)) {
-      items(messages) { message ->
-        Text(text = message, modifier = Modifier.padding(vertical = 4.dp))
+      items(logs) { log ->
+        Text(text = log, modifier = Modifier.padding(vertical = 4.dp))
       }
     }
 
@@ -116,8 +118,6 @@ fun ConsoleScreen(orchestrator: Orchestrator? = null) {
       Button(
         onClick = {
           if (input.isNotBlank()) {
-            messages.add("User: $input")
-            messages.add("Agent: Planning to achieve: $input")
             orchestrator?.submitGoal(input)
             input = ""
           }

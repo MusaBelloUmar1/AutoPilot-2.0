@@ -18,7 +18,9 @@ package com.google.ai.edge.gallery.ui.home
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,32 +70,31 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-          text = "Your offline digital employee agent. Automation without boundaries.",
+          text = "Your personal AI agent that performs tasks for you, entirely on your device.",
           textAlign = TextAlign.Center,
         )
       }
       2 -> {
         Text(
-          text = "Private and Fast",
+          text = "Private and Secure",
           style = MaterialTheme.typography.headlineMedium,
           textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-          text = "Your data never leaves your phone. All processing is done locally.",
+          text = "AutoPilot works offline. Your data stays private and never leaves your phone.",
           textAlign = TextAlign.Center,
         )
       }
       3 -> {
         Text(
-          text = "Permissions Required",
+          text = "Ready to start?",
           style = MaterialTheme.typography.headlineMedium,
           textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-          text =
-            "AutoPilot needs Accessibility and Storage permissions to interact with your apps and files. You'll be asked for more permissions on the next step.",
+          text = "To work effectively, AutoPilot needs Accessibility and some basic permissions to interact with your device.",
           textAlign = TextAlign.Center,
         )
       }
@@ -103,38 +104,36 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 
     Button(
       onClick = {
-        if (step == 1 || step == 2) {
-          step++
-        } else if (step == 3) {
-          // Open accessibility settings.
-          val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-          context.startActivity(intent)
+        if (step < 3) {
           step++
         } else {
-          val permissions =
-            mutableListOf(
-              Manifest.permission.CAMERA,
-              Manifest.permission.RECORD_AUDIO,
-              Manifest.permission.READ_EXTERNAL_STORAGE,
-              Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            )
+          // 3rd click on Step 3 triggers permissions.
+          val permissions = mutableListOf<String>()
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
             permissions.add(Manifest.permission.READ_MEDIA_IMAGES)
-            permissions.add(Manifest.permission.READ_MEDIA_VIDEO)
-            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+          } else {
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
           }
           permissionsLauncher.launch(permissions.toTypedArray())
+
+          // Request Manage External Storage on Android 11+
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+              val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+              intent.data = Uri.parse("package:${context.packageName}")
+              context.startActivity(intent)
+            }
+          }
+
+          // Also guide to accessibility settings as it's crucial for AutoPilot
+          val accessibilityIntent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+          context.startActivity(accessibilityIntent)
         }
       }
     ) {
-      val label =
-        when (step) {
-          in 1..2 -> "Continue"
-          3 -> "Grant Accessibility"
-          else -> "Grant Other Permissions & Start"
-        }
-      Text(label)
+      Text("Continue")
     }
   }
 }

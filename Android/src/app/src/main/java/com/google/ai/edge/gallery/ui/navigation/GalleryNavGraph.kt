@@ -233,10 +233,15 @@ fun GalleryNavHost(
       val context = LocalContext.current
       val orchestrator = remember {
         val modelHelper = LlmChatModelHelper
-        val brain = LiteRTAgentBrain(modelHelper)
+        val brain = LiteRTAgentBrain(modelHelper) { modelManagerViewModel.getSelectedModel() }
         val perception = DefaultPerception(AutoPilotAccessibilityService.getInstance())
-        val scheduler = DefaultTaskScheduler(brain, perception)
-        Orchestrator(scheduler)
+
+        var orch: Orchestrator? = null
+        val scheduler = DefaultTaskScheduler(brain, perception) { message ->
+          orch?.addLog(message)
+        }
+        orch = Orchestrator(scheduler)
+        orch
       }
       // AutoPilot Console is the new home screen.
       MainTabScreen(orchestrator = orchestrator)

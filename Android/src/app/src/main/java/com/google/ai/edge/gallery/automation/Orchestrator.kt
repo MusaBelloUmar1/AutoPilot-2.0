@@ -20,12 +20,24 @@ import com.google.ai.edge.gallery.model.TaskNode
 import com.google.ai.edge.gallery.model.TaskStatus
 import java.util.UUID
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 class Orchestrator(private val taskScheduler: TaskScheduler) {
+
+  private val _logs = MutableStateFlow<List<String>>(emptyList())
+  val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
   fun submitGoal(goal: String) {
     val taskId = UUID.randomUUID().toString()
     val rootTask = TaskNode(id = taskId, description = goal, status = TaskStatus.PENDING)
+    addLog("Goal submitted: $goal")
     taskScheduler.submitGoal(goal, rootTask)
+  }
+
+  fun addLog(message: String) {
+    _logs.value = _logs.value + message
   }
 
   fun getTaskStatus(taskId: String): TaskStatus {

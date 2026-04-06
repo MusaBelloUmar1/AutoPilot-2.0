@@ -37,8 +37,11 @@ interface TaskScheduler {
   fun getStatus(taskId: String): TaskStatus
 }
 
-class DefaultTaskScheduler(private val brain: AgentBrain, private val perception: Perception) :
-  TaskScheduler {
+class DefaultTaskScheduler(
+  private val brain: AgentBrain,
+  private val perception: Perception,
+  private val onLog: (String) -> Unit = {},
+) : TaskScheduler {
 
   private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
   private val tasks = mutableMapOf<String, TaskNode>()
@@ -51,15 +54,19 @@ class DefaultTaskScheduler(private val brain: AgentBrain, private val perception
   override suspend fun runTask(taskId: String) {
     val task = tasks[taskId] ?: return
     tasks[taskId] = task.copy(status = TaskStatus.RUNNING)
+    onLog("Agent is thinking...")
 
     val screenDesc = perception.getScreenDescription()
     val plan = brain.plan(task.description, screenDesc)
+    onLog("Plan: ${plan.reasoning}")
 
     for (action in plan.actions) {
+      onLog("Executing: $action")
       perception.executeAction(action)
     }
 
     tasks[taskId] = task.copy(status = TaskStatus.COMPLETED)
+    onLog("Goal achieved!")
   }
 
   override fun pauseTask(taskId: String) {
